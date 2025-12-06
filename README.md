@@ -1,5 +1,7 @@
 # LearnLynk – Technical Assessment
 
+> **📝 Note:** Please see [NOTES.md](NOTES.md) for detailed explanations, assumptions, and implementation notes.
+
 Thanks for taking the time to complete this assessment. The goal is to understand how you think about problems and how you structure real project work. This is a small, self-contained exercise that should take around **2–3 hours**. It’s completely fine if you don’t finish everything—just note any assumptions or TODOs.
 
 We use:

@@ -17,9 +17,8 @@ create table if not exists public.leads (
   updated_at timestamptz not null default now()
 );
 
--- TODO: add useful indexes for leads:
--- - by tenant_id, owner_id, stage, created_at
-
+-- Indexes for leads
+create index if not exists leads_tenant_owner_stage_idx on public.leads (tenant_id, owner_id, stage);
 
 -- Applications table
 create table if not exists public.applications (
@@ -34,9 +33,8 @@ create table if not exists public.applications (
   updated_at timestamptz not null default now()
 );
 
--- TODO: add useful indexes for applications:
--- - by tenant_id, lead_id, stage
-
+-- Indexes for applications
+create index if not exists applications_tenant_lead_idx on public.applications (tenant_id, lead_id);
 
 -- Tasks table
 create table if not exists public.tasks (
@@ -44,14 +42,13 @@ create table if not exists public.tasks (
   tenant_id uuid not null,
   application_id uuid not null references public.applications(id) on delete cascade,
   title text,
-  type text not null,
+  type text not null check (type in ('call', 'email', 'review')),
   status text not null default 'open',
   due_at timestamptz not null,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint tasks_due_at_check check (due_at >= created_at)
 );
 
--- TODO:
--- - add check constraint for type in ('call','email','review')
--- - add constraint that due_at >= created_at
--- - add indexes for tasks due today by tenant_id, due_at, status
+-- Indexes for tasks
+create index if not exists tasks_tenant_due_status_idx on public.tasks (tenant_id, due_at, status);

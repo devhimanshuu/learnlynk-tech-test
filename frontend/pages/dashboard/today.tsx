@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "../../../lib/supabaseClient";
+import { supabase } from "../../lib/supabaseClient";
 
 type Task = {
   id: string;
@@ -19,18 +19,24 @@ export default function TodayDashboard() {
     setError(null);
 
     try {
-      // TODO:
-      // - Query tasks that are due today and not completed
-      // - Use supabase.from("tasks").select(...)
-      // - You can do date filtering in SQL or client-side
+      // Get today's date range (start of day to end of day in UTC)
+      const today = new Date();
+      const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
+      const endOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1).toISOString();
 
-      // Example:
-      // const { data, error } = await supabase
-      //   .from("tasks")
-      //   .select("*")
-      //   .eq("status", "open");
+      // Query tasks that are due today and not completed
+      const { data, error: fetchError } = await supabase
+        .from("tasks")
+        .select("id, type, status, application_id, due_at")
+        .neq("status", "completed")
+        .gte("due_at", startOfDay)
+        .lt("due_at", endOfDay);
 
-      setTasks([]);
+      if (fetchError) {
+        throw fetchError;
+      }
+
+      setTasks(data || []);
     } catch (err: any) {
       console.error(err);
       setError("Failed to load tasks");
@@ -41,9 +47,18 @@ export default function TodayDashboard() {
 
   async function markComplete(id: string) {
     try {
-      // TODO:
-      // - Update task.status to 'completed'
-      // - Re-fetch tasks or update state optimistically
+      // Update task status to 'completed'
+      const { error: updateError } = await supabase
+        .from("tasks")
+        .update({ status: "completed", updated_at: new Date().toISOString() })
+        .eq("id", id);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Re-fetch tasks to update the list
+      await fetchTasks();
     } catch (err: any) {
       console.error(err);
       alert("Failed to update task");

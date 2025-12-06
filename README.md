@@ -1,4 +1,4 @@
-# LearnLynk – Technical Assessment 
+# LearnLynk – Technical Assessment
 
 Thanks for taking the time to complete this assessment. The goal is to understand how you think about problems and how you structure real project work. This is a small, self-contained exercise that should take around **2–3 hours**. It’s completely fine if you don’t finish everything—just note any assumptions or TODOs.
 
@@ -16,10 +16,10 @@ You may use your own free Supabase project.
 
 There are four technical tasks:
 
-1. Database schema — `backend/schema.sql`  
-2. RLS policies — `backend/rls_policies.sql`  
-3. Edge Function — `backend/edge-functions/create-task/index.ts`  
-4. Next.js page — `frontend/pages/dashboard/today.tsx`  
+1. Database schema — `backend/schema.sql`
+2. RLS policies — `backend/rls_policies.sql`
+3. Edge Function — `backend/edge-functions/create-task/index.ts`
+4. Next.js page — `frontend/pages/dashboard/today.tsx`
 
 There is also a short written question about Stripe in this README.
 
@@ -33,9 +33,9 @@ File: `backend/schema.sql`
 
 Create the following tables:
 
-- `leads`  
-- `applications`  
-- `tasks`  
+- `leads`
+- `applications`
+- `tasks`
 
 Each table should include standard fields:
 
@@ -48,14 +48,14 @@ updated_at timestamptz default now()
 
 Additional requirements:
 
-- `applications.lead_id` → FK to `leads.id`  
-- `tasks.application_id` → FK to `applications.id`  
-- `tasks.type` should only allow: `call`, `email`, `review`  
-- `tasks.due_at >= tasks.created_at`  
-- Add reasonable indexes for typical queries:  
-  - Leads: `tenant_id`, `owner_id`, `stage`  
-  - Applications: `tenant_id`, `lead_id`  
-  - Tasks: `tenant_id`, `due_at`, `status`  
+- `applications.lead_id` → FK to `leads.id`
+- `tasks.application_id` → FK to `applications.id`
+- `tasks.type` should only allow: `call`, `email`, `review`
+- `tasks.due_at >= tasks.created_at`
+- Add reasonable indexes for typical queries:
+  - Leads: `tenant_id`, `owner_id`, `stage`
+  - Applications: `tenant_id`, `lead_id`
+  - Tasks: `tenant_id`, `due_at`, `status`
 
 ---
 
@@ -66,8 +66,8 @@ File: `backend/rls_policies.sql`
 We want:
 
 - Counselors can see:
-  - Leads they own, or  
-  - Leads assigned to any team they belong to  
+  - Leads they own, or
+  - Leads assigned to any team they belong to
 - Admins can see all leads belonging to their tenant
 
 Assume the existence of:
@@ -86,9 +86,9 @@ JWT contains:
 
 Tasks:
 
-1. Enable RLS on `leads`  
-2. Write a **SELECT** policy enforcing the rules above  
-3. Write an **INSERT** policy that allows counselors/admins to add leads under their tenant  
+1. Enable RLS on `leads`
+2. Write a **SELECT** policy enforcing the rules above
+3. Write an **INSERT** policy that allows counselors/admins to add leads under their tenant
 
 ---
 
@@ -99,6 +99,7 @@ File: `backend/edge-functions/create-task/index.ts`
 Write a simple POST endpoint that:
 
 ### Input:
+
 ```json
 {
   "application_id": "uuid",
@@ -108,10 +109,11 @@ Write a simple POST endpoint that:
 ```
 
 ### Requirements:
+
 - Validate:
   - `task_type` is `call`, `email`, or `review`
-  - `due_at` is a valid *future* timestamp  
-- Insert a row into `tasks` using the service role key  
+  - `due_at` is a valid _future_ timestamp
+- Insert a row into `tasks` using the service role key
 - Return:
 
 ```json
@@ -129,14 +131,14 @@ File: `frontend/pages/dashboard/today.tsx`
 
 Build a small page that:
 
-- Fetches tasks due **today** (status ≠ completed)  
-- Uses the provided Supabase client  
-- Displays:  
-  - type  
-  - application_id  
-  - due_at  
-  - status  
-- Adds a “Mark Complete” button that updates the task in Supabase  
+- Fetches tasks due **today** (status ≠ completed)
+- Uses the provided Supabase client
+- Displays:
+  - type
+  - application_id
+  - due_at
+  - status
+- Adds a “Mark Complete” button that updates the task in Supabase
 
 ---
 
@@ -150,18 +152,34 @@ Add a section titled:
 
 Write **8–12 lines** describing how you would implement a Stripe Checkout flow for an application fee, including:
 
-- When you insert a `payment_requests` row  
-- When you call Stripe  
-- What you store from the checkout session  
-- How you handle webhooks  
-- How you update the application after payment succeeds  
+- When you insert a `payment_requests` row
+- When you call Stripe
+- What you store from the checkout session
+- How you handle webhooks
+- How you update the application after payment succeeds
 
 ---
 
 ## Submission
 
-1. Push your work to a public GitHub repo.  
-2. Add your Stripe answer at the bottom of this file.  
+1. Push your work to a public GitHub repo.
+2. Add your Stripe answer at the bottom of this file.
 3. Share the link.
 
 Good luck.
+
+---
+
+## Stripe Answer
+
+To implement a Stripe Checkout flow for an application fee:
+
+1. **Insert `payment_requests` row**: When a user initiates payment (e.g., clicks "Pay Application Fee"), insert a row into `payment_requests` with `application_id`, `amount`, `status: 'pending'`, and `created_at`. This creates a record before calling Stripe.
+
+2. **Call Stripe**: Create a Stripe Checkout Session using `stripe.checkout.sessions.create()` with the fee amount, success/cancel URLs, and `metadata: { payment_request_id, application_id }`. Store the returned `session.id` in the `payment_requests` row.
+
+3. **Store from Checkout Session**: Save `stripe_session_id` and `stripe_checkout_url` in `payment_requests`. Redirect the user to `checkout_url`.
+
+4. **Handle Webhooks**: Set up an endpoint to receive Stripe webhooks. Listen for `checkout.session.completed` event. Verify the webhook signature using `stripe.webhooks.constructEvent()`. Extract `payment_request_id` from `session.metadata`.
+
+5. **Update after payment succeeds**: In the webhook handler, update `payment_requests` row to `status: 'completed'` and store `stripe_payment_intent_id`. Then update the `applications` row (e.g., set `payment_status: 'paid'`, `stage: 'submitted'`). Optionally trigger follow-up actions like sending a confirmation email or creating initial tasks.
